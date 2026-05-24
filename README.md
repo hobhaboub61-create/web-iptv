@@ -258,14 +258,13 @@ flowchart LR
 
 ### Flux d'inscription
 
-```
-Inscription → Supabase Auth → Email de confirmation (SendGrid)
-                                    ↓
-                 L'utilisateur clique sur le lien de confirmation
-                                    ↓
-                    Profil automatiquement créé dans `profiles`
-                                    ↓
-                        Connexion autorisée
+```mermaid
+graph TD
+    A[Inscription] --> B[Supabase Auth]
+    B --> C[Email de confirmation<br/>envoyé via SendGrid]
+    C --> D[Utilisateur clique<br/>sur le lien]
+    D --> E[Profil créé<br/>automatiquement]
+    E --> F[Connexion<br/>autorisée]
 ```
 
 Les emails transactionnels sont gérés par **Supabase Auth + SendGrid** (SMTP) :
