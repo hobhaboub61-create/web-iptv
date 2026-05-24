@@ -256,20 +256,61 @@ flowchart LR
 
 ## Email & notifications
 
+### Flux d'inscription
+
+```
+Inscription → Supabase Auth → Email de confirmation (SendGrid)
+                                    ↓
+                 L'utilisateur clique sur le lien de confirmation
+                                    ↓
+                    Profil automatiquement créé dans `profiles`
+                                    ↓
+                        Connexion autorisée
+```
+
 Les emails transactionnels sont gérés par **Supabase Auth + SendGrid** (SMTP) :
 
-- **Confirmation d'inscription** — envoyé automatiquement par Supabase Auth
-- **Emails personnalisés** — via la Edge Function `send-email`
+| Type | Déclencheur | Automatique |
+|------|-------------|-------------|
+| Confirmation d'inscription | `supabase.auth.signUp()` | ✅ |
+| Réinitialisation mot de passe | `supabase.auth.resetPasswordForEmail()` | ✅ |
+| Emails personnalisés | `supabase.functions.invoke('send-email')` | Manuel |
+
+### Configuration requise
+
+Pour que l'envoi d'emails fonctionne, votre projet Supabase doit avoir :
+
+1. **Un provider SMTP configuré** (SendGrid, Mailgun, etc.) dans Authentication → Email → Providers
+2. **Le site_url** correctement renseigné (utilisé dans les liens de confirmation)
+3. **La table `profiles`** créée en base avec le trigger automatique (voir `supabase.sql`)
+4. **`mailer_autoconfirm`** désactivé (les nouveaux utilisateurs doivent confirmer leur email)
+
+### Envoyer un email personnalisé
 
 ```javascript
-import { supabase } from './services/supabase.js'
+import { supabase } from './services/authService.js'
 
 await supabase.functions.invoke('send-email', {
-  body: { to: "user@exemple.com", subject: "Sujet", html: "<h1>Message</h1>" }
+  body: {
+    to: "user@exemple.com",
+    subject: "Bienvenue !",
+    html: "<h1>Message personnalisé</h1>"
+  }
 })
 ```
 
-La Edge Function est déployée sur Supabase et utilise l'API SendGrid avec une clé API stockée dans les secrets du projet.
+La Edge Function `send-email` est déployée sur Supabase et utilise l'API SendGrid.
+
+### Base de données
+
+Un trigger SQL crée automatiquement un profil à chaque inscription (`supabase.sql`) :
+
+```sql
+-- Créé automatiquement un profil avec le pseudo fourni
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+```
 
 ## Internationalisation
 
